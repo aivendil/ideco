@@ -1,5 +1,9 @@
-from test_task.views import get_all_news
+from aiohttp import web
+
+from test_task.views import get_all_news, get_news_by_id
 
 
 def setup_routes(app):
-    app.router.add_get('/', get_all_news)
+
+    app.add_routes([web.get('/', get_all_news),
+                    web.get(r'/news/{news_id:\d+}', get_news_by_id)])
