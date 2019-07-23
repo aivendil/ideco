@@ -46,6 +46,7 @@ async def find_news(news_id, all_news, comments):
     else:
         news = filtered_news[0]
         comments = await find_comments_by_news_id(news_id, comments)
+        comments.sort(key=lambda comment: datetime.datetime.fromisoformat(comment['date']))
         news['comments'] = comments
         news['comments_count'] = len(comments)
         return news
@@ -62,7 +63,8 @@ async def get_all_news(request):
         news['comments_count'] = len(await find_comments_by_news_id(news['id'], all_comments))
     filtered_news = list(
         filter(check_news_available, all_news))
-    return web.json_response({'news': filtered_news})
+    filtered_news.sort(key=lambda news: datetime.datetime.fromisoformat(news['date']))
+    return web.json_response({'news': filtered_news, 'news_count': len(filtered_news)})
 
 
 async def get_news_by_id(request):
