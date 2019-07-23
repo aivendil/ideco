@@ -2,8 +2,6 @@ import datetime
 
 from aiohttp import web
 
-from test_task.settings import all_comments, all_news
-
 
 def check_news_available(news):
     """
@@ -31,20 +29,20 @@ async def find_comments_by_news_id(news_id, comments):
 
 async def find_news(news_id, all_news, comments):
     """
-    Find news with given id. In founded news will be added related comments and count of comments.
+    Find news with given id and return it's copy. In founded news will be added related comments and count of comments.
     :param news_id: Id of news
     :type news_id: int
     :param all_news: List of news in which will be searched
     :type all_news: list of dict
     :param comments: List of comment in which will be searched
-    :return: First news with given id if it exist else None.
+    :return: Copy of first news with given id if it exist else None.
     :rtype: dict or None
     """
     filtered_news = list(filter(lambda news: news['id'] == news_id, all_news))
     if len(filtered_news) == 0:
         return None
     else:
-        news = filtered_news[0]
+        news = filtered_news[0].copy()
         comments = await find_comments_by_news_id(news_id, comments)
         comments.sort(key=lambda comment: datetime.datetime.fromisoformat(comment['date']))
         news['comments'] = comments
@@ -59,10 +57,12 @@ async def get_all_news(request):
     :type request: aiohttp.web_request.Request
     :return: Json with list of all news
     """
-    for news in all_news:
-        news['comments_count'] = len(await find_comments_by_news_id(news['id'], all_comments))
+    news = request.app['news']
+    comments = request.app['comments']
+    for n in news:
+        n['comments_count'] = len(await find_comments_by_news_id(n['id'], comments))
     filtered_news = list(
-        filter(check_news_available, all_news))
+        filter(check_news_available, news))
     filtered_news.sort(key=lambda news: datetime.datetime.fromisoformat(news['date']))
     return web.json_response({'news': filtered_news, 'news_count': len(filtered_news)})
 
@@ -74,10 +74,12 @@ async def get_news_by_id(request):
     :type request: aiohttp.web_request.Request
     :return: Json with news if it exist and available else 404
     """
+    news = request.app['news']
+    comments = request.app['comments']
     news_id = int(request.match_info['news_id'])
-    news = await find_news(news_id, all_news, all_comments)
-    if news is None or not check_news_available(news):
+    founded_news = await find_news(news_id, news, comments)
+    if founded_news is None or not check_news_available(founded_news):
         return web.HTTPNotFound()
-    return web.json_response({'news': news})
+    return web.json_response({'news': founded_news})
 
 
